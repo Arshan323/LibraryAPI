@@ -1,27 +1,25 @@
-# import sqlalchemy modules to create engin and session manager
 from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from dotenv import load_dotenv
+import os
 
+load_dotenv()
 
-# import needed modules to use local variables
+DB_USER_NAME = os.getenv("DB_USER_NAME")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_HOST_NAME = os.getenv("DB_HOST_NAME")
+DB_NAME = os.getenv("DB_NAME")
+DB_PORT = os.getenv("DB_PORT")
 
-
-# import local variables from .env using os.getenv
-DB_USER_NAME = "" 
-DB_PASSWORD = ""
-DB_HOST_NAME = ""
-DB_NAME = ""
-DB_PORT = ""
-
-# create database url with imported local variables
 DATABASE_URL = f"postgresql+psycopg2://{DB_USER_NAME}:{DB_PASSWORD}@{DB_HOST_NAME}:{DB_PORT}/{DB_NAME}"
 engine = create_engine(DATABASE_URL)
 
-# SessionLocal = sessionmaker(autoflush= False, autocommit= False, bind=engine)
+SessionLocal = sessionmaker(autoflush=False, autocommit=False, bind=engine)
 
-# create get_db function to manage sessions
-"""def get_db():
+def get_db():
     db = SessionLocal()
     try:
         yield db
     finally:
-        db.close()"""
+        db.close()
+

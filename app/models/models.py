@@ -1,14 +1,16 @@
-from sqlalchemy import Column, Integer, String, VARCHAR, TIMESTAMP, func
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import String, Column, Integer, DateTime
+from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.sql import func
 
-Base = declarative_base()
+class Base(DeclarativeBase):
+    pass
 
-# Tables should inherit from Base
-class User():
-    __tablename__ = "users"
+class User(Base):
+    tablename = "users"
     id = Column(Integer, primary_key=True, autoincrement=True)
-    username =Column(VARCHAR(40), nullable=False, unique=True)
-#    ✅ Create email column to store users emails, emails must be unique
-#    ✅ Create passwrod column to store passwords, this column should not be nullable
-#    ✅ Add created_at Column and set server_default value to to get current time from func.now()
-#    ✅ Add updated_at Column and set server_default value to to get current time from func.now()
+    username = Column(String(40), nullable=False, unique=True)
+    email = Column(String, nullable=False, unique=True)
+    hashed_password = Column(String, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
