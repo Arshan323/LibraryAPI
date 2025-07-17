@@ -6,7 +6,7 @@ class Base(DeclarativeBase):
     pass
 
 class User(Base):
-    tablename = "users"
+    __tablename__ = "users"
     id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String(40), nullable=False, unique=True)
     email = Column(String, nullable=False, unique=True)
