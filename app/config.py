@@ -34,23 +34,23 @@ def user_register(user_credentials: BaseUser, db: Session = Depends(get_db)):
 
 
 
-# @app.get("/users", response_model=List[User])
-# def get_users(
-#     sort_by_created_at: Optional[bool] = Query(None),
-#     limit: Optional[int] = Query(None),
-#     search_email: Optional[str] = Query(None),
-#     db: Session = Depends(get_db)
-# ):
-#     query = db.query(UserModel)
+@app.get("/users", response_model=List[User])
+def get_users(
+    sort_by_created_at: Optional[bool] = Query(None),
+    limit: Optional[int] = Query(None),
+    search_email: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    query = db.query(UserModel)
     
-#     if search_email:
-#         query = query.filter(UserModel.email == search_email)
+    if search_email:
+        query = query.filter(UserModel.email == search_email)
     
-#     if sort_by_created_at is not None:
-#         order = asc(UserModel.created_at) if sort_by_created_at else desc(UserModel.created_at)
-#         query = query.order_by(order)
+    if sort_by_created_at is not None:
+        order = asc(UserModel.created_at) if sort_by_created_at else desc(UserModel.created_at)
+        query = query.order_by(order)
     
-#     if limit:
-#         query = query.limit(limit)
+    if limit:
+        query = query.limit(limit)
     
-#     return query.all()
+    return query.all()
