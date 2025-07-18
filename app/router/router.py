@@ -1,8 +1,9 @@
 from fastapi import APIRouter,Depends, HTTPException
-from models.models import User as UserModel
-from schemas.schemas import BaseUser, User
+from app.models.models import User as UserModel
+from app.schemas.schemas import BaseUser, User
 from sqlalchemy.orm import Session
-from db import get_db
+from app.db import get_db
+
 
 router = APIRouter()
 
@@ -32,6 +33,7 @@ def user_register(user_credentials: BaseUser, db: Session = Depends(get_db)):
 @router.get("/users/")
 def read_users(db:Session=Depends(get_db)):
     all_user = db.query(UserModel).all()
-    if all_user:
+    if not all_user:
         return "NO user"
     return all_user
+
