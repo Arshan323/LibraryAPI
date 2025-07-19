@@ -1,8 +1,8 @@
 from fastapi import APIRouter,Depends, HTTPException
-from app.models.models import User as UserModel
-from app.schemas.schemas import BaseUser, User
+from models.models import User as UserModel
+from schemas.schemas import BaseUser, User
 from sqlalchemy.orm import Session
-from app.db import get_db
+from db import get_db
 
 
 router = APIRouter()
@@ -20,13 +20,13 @@ def user_register(user_credentials: BaseUser, db: Session = Depends(get_db)):
     new_user = UserModel(
         username=user_credentials.username,
         email=user_credentials.email,
-        hashed_password=user_credentials.password  # باید هش شود
+        password=user_credentials.password
     )
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
     
-    return {"username":new_user.username,"email":new_user.email,"password":new_user.hashed_password,"message":"sucessfull"}
+    return {"username":new_user.username,"email":new_user.email,"password":new_user.password,"message":"sucessfull"}
 
 
 
