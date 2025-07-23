@@ -3,9 +3,13 @@ from models.models import Base
 from router import router
 from db import engine
 
-app = FastAPI()
+app = FastAPI(
+    title="LIBRARYAPI"
+)
 # ایجاد جداول
 Base.metadata.create_all(bind=engine)
 
-app.include_router(router=router.router,tags=['Basic'])
+app.include_router(router=router.router,tags=["auth"])
+
+app.include_router(router=router.user_router,tags=["get_user"])
  
