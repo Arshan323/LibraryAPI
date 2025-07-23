@@ -2,6 +2,7 @@
 
 from pydantic import BaseModel, EmailStr
 
+# user_register
 class BaseUser(BaseModel):
     username: str
     email: EmailStr
@@ -16,6 +17,7 @@ class UserResponse(BaseModel):
     class Config:
         orm_mode = True
 
+# update_user
 
 class Update_Response(BaseModel):
     id: int
@@ -26,3 +28,9 @@ class Update_Response(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+# delete
+class delete(BaseModel):
+    message:str
+    user_id:int

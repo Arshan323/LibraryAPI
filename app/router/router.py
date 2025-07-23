@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from db import get_db
 from sqlalchemy.exc import SQLAlchemyError
 import bcrypt
+
 router = APIRouter(
     prefix="/auth"
 )
@@ -42,13 +43,16 @@ def user_register(user_data: schemas.BaseUser, db: Session = Depends(get_db)):
 
 @user_router.get("/read/{user_id}",status_code=status.HTTP_200_OK)
 def user(user_id:int=Path(ge=1), db: Session = Depends(get_db)):
-             
-    db_user = db.query(models.User).filter(models.User.id == user_id).first()
+    try:
     
-    if not db_user:
-        raise HTTPException(status_code=404,detail="User not found")
+        db_user = db.query(models.User).filter(models.User.id == user_id).first()
     
-    return db_user
+        if not db_user:
+            raise HTTPException(status_code=404,detail="User not found")
+    
+        return db_user
+    except SQLAlchemyError:
+        raise HTTPException(status_code=500,detail="server cant management")
 
 
 @user_router.patch(
@@ -56,25 +60,75 @@ def user(user_id:int=Path(ge=1), db: Session = Depends(get_db)):
     response_model=schemas.Update_Response
     )
 def update_user(user_data:schemas.BaseUser,db:Session=Depends(get_db),user_id:int=Path(ge=1)):
-                
-    db_user = db.query(models.User).filter(models.User.id==user_id).first()
+    try:
+        db_user = db.query(models.User).filter(models.User.id==user_id).first()
+        if not db_user:
+            raise HTTPException(status_code=404,detail="No user with id")
+        db_user.username = user_data.username
+        db_user.email = user_data.email
     
-    db_user.username = user_data.username
-    db_user.email = user_data.email
+        hashed_password = bcrypt.hashpw(user_data.password.encode(), bcrypt.gensalt())
+        db_user.password = hashed_password
     
-    hashed_password = bcrypt.hashpw(user_data.password.encode(), bcrypt.gensalt())
-    db_user.password = hashed_password
-    
-    db.commit()
-    return {"message":"seccessful update","username":db_user.username,"email":db_user.email,"password":db_user.password,"id":db_user.id}
+        db.commit()
+        return {"message":"seccessful update","username":db_user.username,"email":db_user.email,"password":db_user.password,"id":db_user.id}
+    except SQLAlchemyError:
+        raise HTTPException(status_code=500,detail="server cant management")
+        
 
 @user_router.delete(
     path="/deleted/{user_id}",
-    response_model=None
+    response_model=schemas.delete
 )
 def delete(user_id:int=Path(ge=1),db:Session=Depends(get_db)):
-    db_user = db.query(models.User).filter(models.User.id==user_id).first()
-    db.delete(db_user)
-    db.commit()
-    return {"message":"user deleted","user_id":db_user.id}
+    try:
+        db_user = db.query(models.User).filter(models.User.id==user_id).first()
+        if not db_user:
+            raise HTTPException(status_code=404,detail="No user with id")
+        db.delete(db_user)
+        db.commit()
+        return {"message":"user deleted","user_id":db_user.id}
+    except SQLAlchemyError:
+        raise HTTPException(status_code=500,detail="server cant management")
     
+
+@user_router.get("/search/")
+def search(by_with: str, user: str, db: Session = Depends(get_db)):
+    try:
+        if by_with.find("id") != -1:
+            try:
+                user_id = int(user)
+            except Exception:
+                raise HTTPException(status_code=400, detail="TypeError: id must be an integer")
+
+            try:
+                db_user = db.query(models.User).filter(models.User.id == user_id).first()
+                if not db_user:
+                    raise HTTPException(status_code=404, detail="User not found")
+                return db_user
+            except Exception:
+                raise HTTPException(status_code=500, detail="Database error during ID search")
+
+        elif by_with.find("email") != -1:
+            try:
+                db_user = db.query(models.User).filter(models.User.email == user).first()
+                if not db_user:
+                    raise HTTPException(status_code=404, detail="User not found")
+                return db_user
+            except Exception:
+                raise HTTPException(status_code=500, detail="Database error during email search")
+
+        elif by_with.find("username") != -1:
+            try:
+                db_user = db.query(models.User).filter(models.User.username == user).first()
+                if not db_user:
+                    raise HTTPException(status_code=404, detail="User not found")
+                return db_user
+            except Exception:
+                raise HTTPException(status_code=500, detail="Database error during username search")
+
+        else:
+            raise HTTPException(status_code=400, detail="Invalid search parameter")
+
+    except SQLAlchemyError:
+        raise HTTPException(status_code=500, detail="Internal server error")
