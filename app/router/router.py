@@ -1,10 +1,11 @@
-from fastapi import APIRouter,Depends, HTTPException,status,Path
+from fastapi import APIRouter,Depends, HTTPException, UploadFile,status,Path,File,Form
 from models import models
 from schemas import schemas
 from sqlalchemy.orm import Session
 from db import get_db
 from sqlalchemy.exc import SQLAlchemyError
 import bcrypt
+from middleware.bucket import upload_file
 
 router = APIRouter(
     prefix="/auth"
@@ -12,6 +13,10 @@ router = APIRouter(
 
 user_router = APIRouter(
     prefix="/get_user"
+)
+
+book_router = APIRouter(
+    prefix="/book"
 )
 
 @router.post("/signup", response_model=schemas.UserResponse,status_code=status.HTTP_201_CREATED)
@@ -127,3 +132,16 @@ def search(by_with: str, user: str, db: Session = Depends(get_db)):
 
     except SQLAlchemyError:
         raise HTTPException(status_code=500, detail="Internal server error")
+    
+    
+@book_router.post("/upload")
+def upload_book(
+    title: str = Form(...),
+    pdf: UploadFile = File(...),
+    img: UploadFile = File(...)
+):
+    
+    pdf_url = upload_file(pdf, f"test/{title}.pdf")
+    img_url = upload_file(img, f"{title}.png")
+     
+    return {"message":"file created","pdf_url":pdf_url,"img_url":img_url}

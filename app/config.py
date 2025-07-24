@@ -12,4 +12,5 @@ Base.metadata.create_all(bind=engine)
 app.include_router(router=router.router,tags=["auth"])
 
 app.include_router(router=router.user_router,tags=["get_user"])
- 
+
+app.include_router(router=router.book_router,tags=["book"])

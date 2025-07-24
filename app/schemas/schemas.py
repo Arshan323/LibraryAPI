@@ -1,6 +1,8 @@
 
 
 from pydantic import BaseModel, EmailStr
+from datetime import datetime
+from sqlalchemy import LargeBinary
 
 # user_register
 class BaseUser(BaseModel):
@@ -34,3 +36,13 @@ class Update_Response(BaseModel):
 class delete(BaseModel):
     message:str
     user_id:int
+    
+# class search(BaseModel):
+    	
+#     id:int
+#     email: EmailStr
+#     phone_number: str
+#     update_at: datetime
+#     password: LargeBinary
+#     username: str
+#     created_at: datetime
