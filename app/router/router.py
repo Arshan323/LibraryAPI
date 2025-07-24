@@ -101,31 +101,26 @@ def search(by_with: str, user: str, db: Session = Depends(get_db)):
             except Exception:
                 raise HTTPException(status_code=400, detail="TypeError: id must be an integer")
 
-            try:
-                db_user = db.query(models.User).filter(models.User.id == user_id).first()
-                if not db_user:
-                    raise HTTPException(status_code=404, detail="User not found")
-                return db_user
-            except Exception:
-                raise HTTPException(status_code=500, detail="Database error during ID search")
+            
+            db_user = db.query(models.User).filter(models.User.id == user_id).first()
+            if not db_user:
+                raise HTTPException(status_code=404, detail="User not found")
+            return db_user
+
 
         elif by_with.find("email") != -1:
-            try:
-                db_user = db.query(models.User).filter(models.User.email == user).first()
-                if not db_user:
-                    raise HTTPException(status_code=404, detail="User not found")
-                return db_user
-            except Exception:
-                raise HTTPException(status_code=500, detail="Database error during email search")
+            
+            db_user = db.query(models.User).filter(models.User.email == user).first()
+            if not db_user:
+                raise HTTPException(status_code=404, detail="User not found")
+            return db_user
 
         elif by_with.find("username") != -1:
-            try:
-                db_user = db.query(models.User).filter(models.User.username == user).first()
-                if not db_user:
-                    raise HTTPException(status_code=404, detail="User not found")
-                return db_user
-            except Exception:
-                raise HTTPException(status_code=500, detail="Database error during username search")
+            
+            db_user = db.query(models.User).filter(models.User.username == user).first()
+            if not db_user:
+                raise HTTPException(status_code=404, detail="User not found")
+            return db_user
 
         else:
             raise HTTPException(status_code=400, detail="Invalid search parameter")
