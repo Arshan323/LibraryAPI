@@ -46,18 +46,6 @@ def user_register(user_data: schemas.BaseUser, db: Session = Depends(get_db)):
     
 
 
-@user_router.get("/read/{user_id}",status_code=status.HTTP_200_OK)
-def user(user_id:int=Path(ge=1), db: Session = Depends(get_db)):
-    try:
-    
-        db_user = db.query(models.User).filter(models.User.id == user_id).first()
-    
-        if not db_user:
-            raise HTTPException(status_code=404,detail="User not found")
-    
-        return db_user
-    except SQLAlchemyError:
-        raise HTTPException(status_code=500,detail="server cant management")
 
 
 @user_router.patch(
@@ -97,7 +85,7 @@ def delete(user_id:int=Path(ge=1),db:Session=Depends(get_db)):
         raise HTTPException(status_code=500,detail="server cant management")
     
 
-@user_router.get("/search/")
+@user_router.get("/search/",response_model=schemas.search)
 def search(by_with: str, user: str, db: Session = Depends(get_db)):
     try:
         if by_with.find("id") != -1:
@@ -134,7 +122,7 @@ def search(by_with: str, user: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="Internal server error")
     
     
-@book_router.post("/upload")
+@book_router.post("/upload",response_model=schemas.upload_book)
 def upload_book(
     title: str = Form(...),
     pdf: UploadFile = File(...),

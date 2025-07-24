@@ -2,8 +2,7 @@
 
 from pydantic import BaseModel, EmailStr
 from datetime import datetime
-from sqlalchemy import LargeBinary
-
+from typing import Optional
 # user_register
 class BaseUser(BaseModel):
     username: str
@@ -37,12 +36,18 @@ class delete(BaseModel):
     message:str
     user_id:int
     
-# class search(BaseModel):
+# search
+class search(BaseModel):
     	
-#     id:int
-#     email: EmailStr
-#     phone_number: str
-#     update_at: datetime
-#     password: LargeBinary
-#     username: str
-#     created_at: datetime
+    id:int
+    email: EmailStr
+    phone_number: Optional[str]
+    update_at: datetime
+    username: str
+    created_at: datetime
+    
+# upload_book
+class upload_book(BaseModel):
+    message:str
+    pdf_url:str
+    img_url:str
