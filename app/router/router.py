@@ -120,16 +120,34 @@ def search(by_with: str, user: str, db: Session = Depends(get_db)):
 
     except SQLAlchemyError:
         raise HTTPException(status_code=500, detail="Internal server error")
-    
-    
-@book_router.post("/upload",response_model=schemas.upload_book)
+
+
+@book_router.post("/upload", response_model=schemas.upload_book)
 def upload_book(
+    author:str = Form(...),
+    genre: str = Form(...),
+    language: str = Form(...),
+    page_counts: int = Form(...),
+    price:int=Form(),
     title: str = Form(...),
     pdf: UploadFile = File(...),
-    img: UploadFile = File(...)
+    db:Session=Depends(get_db)
 ):
-    
+   
     pdf_url = upload_file(pdf, f"test/{title}.pdf")
-    img_url = upload_file(img, f"{title}.png")
-     
-    return {"message":"file created","pdf_url":pdf_url,"img_url":img_url}
+
+    new_book = models.Book(
+        name=title,
+        link_download=pdf_url,
+        author=author,
+        genre=genre,
+        language=language,
+        page_counts=page_counts,
+        price=price
+    )
+
+    db.add(new_book)
+    db.commit()
+    db.refresh(new_book)
+
+    return {"message": "file created", "pdf_url": pdf_url}

@@ -29,7 +29,7 @@ class Book(Base):
     language = Column(String)
     page_counts = Column(Integer)
     book_image = Column(String)
-    price = Column(Float)
+    price = Column(Float,nullable=True)
     link_download = Column(String)
     description = Column(Text)
 

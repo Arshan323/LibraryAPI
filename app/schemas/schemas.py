@@ -50,4 +50,3 @@ class search(BaseModel):
 class upload_book(BaseModel):
     message:str
     pdf_url:str
-    img_url:str
