@@ -131,8 +131,13 @@ def upload_book(
     price:int=Form(),
     title: str = Form(...),
     pdf: UploadFile = File(...),
+    user_id: int = Form(...),
+    book_password: str = Form(...),
     db:Session=Depends(get_db)
 ):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
    
     pdf_url = upload_file(pdf, f"test/{title}.pdf")
 
@@ -143,11 +148,74 @@ def upload_book(
         genre=genre,
         language=language,
         page_counts=page_counts,
-        price=price
+        price=price,
+        user_id=user_id,
+        book_password=book_password
     )
 
     db.add(new_book)
     db.commit()
     db.refresh(new_book)
 
-    return {"message": "file created", "pdf_url": pdf_url}
+    return {"message": "file created", "pdf_url": pdf_url,"book_id": new_book.id,"book_password": new_book.book_password}
+
+@book_router.get("/get_book/{book_id}", response_model=schemas.get_book)
+def get_book(book_id: int, db: Session = Depends(get_db)):
+    book = db.query(models.Book).filter(models.Book.id == book_id).first()
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    
+    return {
+        "message": "Book retrieved successfully",
+        "pdf_url": book.link_download
+    }
+    
+
+@book_router.delete("/delete_book/{book_id}", response_model=schemas.delete_book)
+def delete_book(book_id: int, db: Session = Depends(get_db)):
+    book = db.query(models.Book).filter(models.Book.id == book_id).first()
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    
+    db.delete(book)
+    db.commit()
+    
+    return {"message": "Book deleted successfully", "book_id": book_id}
+@book_router.patch("/update_book/{book_id}/", response_model=None)
+def update_book(
+    book_id: int,
+    author: str = Form(...),
+    genre: str = Form(...),
+    language: str = Form(...),
+    page_counts: int = Form(...),
+    price: int = Form(...),
+    title: str = Form(...),
+    book_password: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    book = db.query(models.Book).filter(models.Book.id == book_id).first()
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    if db.query(models.Book).filter(models.Book.book_password != book_password).first():
+        raise HTTPException(status_code=409, detail="Book password isn't correct")
+    book.name = title
+    book.author = author
+    book.genre = genre
+    book.language = language
+    book.page_counts = page_counts
+    book.price = price
+
+    db.commit()
+    db.refresh(book)
+
+    return {"message":"book updated successfully"}
+
+@book_router.get("/get_all_books", response_model=schemas.get_all_books)
+def get_all_books(db: Session = Depends(get_db)):
+    books = db.query(models.Book).all()
+    if not books:
+        raise HTTPException(status_code=404, detail="No books found")
+    
+    return {"message": "Books retrieved successfully", "books": books}
+

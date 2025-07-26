@@ -50,3 +50,41 @@ class search(BaseModel):
 class upload_book(BaseModel):
     message:str
     pdf_url:str
+    book_id:int
+    book_password:str
+
+# delete book
+class delete_book(BaseModel):
+    message: str
+    book_id: int
+    
+# update_book
+class update_book(BaseModel):
+    message: str
+    
+# get_book
+class get_book(BaseModel):
+    message: str
+    pdf_url: str
+
+
+class BookInfo(BaseModel):
+    id: int
+    name: str
+    author: str
+    genre: str
+    language: str
+    page_counts: int
+    price: int
+    link_download: str
+
+    class Config:
+        from_attributes = True
+
+# get_all_books
+class get_all_books(BaseModel):
+    message: str
+    books: list[BookInfo]
+    class Config:
+        orm_mode = True
+

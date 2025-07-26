@@ -26,6 +26,14 @@ if __name__ == "__main__":
     with open("C:/Users/Arshan/Desktop/practice_fast_api/libraryApi/app/s3bucket.py",'rb') as file:
         upload_file(file=file,file_name="use_cloud")
 
+def delete_file(file_name):
+    try:
+        s3.delete_object(Bucket=liara_bucket_name, Key=file_name)
+        return f"File {file_name} deleted successfully."
+    except Exception as e:
+        print(f"Error deleting file: {e}")
+
+
 """
 cmd
 cp ..\filename .adressmainfile
