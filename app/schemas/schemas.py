@@ -16,7 +16,7 @@ class UserResponse(BaseModel):
     message: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # update_user
 
@@ -28,7 +28,7 @@ class Update_Response(BaseModel):
     message: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # delete
@@ -86,5 +86,5 @@ class get_all_books(BaseModel):
     message: str
     books: list[BookInfo]
     class Config:
-        orm_mode = True
+        from_attributes = True
 

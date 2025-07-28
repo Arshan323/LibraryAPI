@@ -25,6 +25,7 @@ def user_register(user_data: schemas.BaseUser, db: Session = Depends(get_db)):
         if db.query(models.User).filter(models.User.email==user_data.email).first():
             raise HTTPException(status_code=409,detail="email is already exist")
 
+
         new_user = models.User(
             username=user_data.username,
             email=user_data.email,
@@ -50,13 +51,14 @@ def user_register(user_data: schemas.BaseUser, db: Session = Depends(get_db)):
 
 @user_router.patch(
     path="/update/{user_id}",
-    response_model=schemas.Update_Response
+    response_model=schemas.Update_Response,
     )
 def update_user(user_data:schemas.BaseUser,db:Session=Depends(get_db),user_id:int=Path(ge=1)):
     try:
         db_user = db.query(models.User).filter(models.User.id==user_id).first()
         if not db_user:
             raise HTTPException(status_code=404,detail="No user with id")
+        
         db_user.username = user_data.username
         db_user.email = user_data.email
     
@@ -76,6 +78,7 @@ def update_user(user_data:schemas.BaseUser,db:Session=Depends(get_db),user_id:in
 def delete(user_id:int=Path(ge=1),db:Session=Depends(get_db)):
     try:
         db_user = db.query(models.User).filter(models.User.id==user_id).first()
+
         if not db_user:
             raise HTTPException(status_code=404,detail="No user with id")
         db.delete(db_user)
@@ -132,7 +135,6 @@ def upload_book(
     title: str = Form(...),
     pdf: UploadFile = File(...),
     user_id: int = Form(...),
-    book_password: str = Form(...),
     db:Session=Depends(get_db)
 ):
     user = db.query(models.User).filter(models.User.id == user_id).first()
@@ -149,8 +151,7 @@ def upload_book(
         language=language,
         page_counts=page_counts,
         price=price,
-        user_id=user_id,
-        book_password=book_password
+        user_id=user_id
     )
 
     db.add(new_book)
@@ -172,11 +173,12 @@ def get_book(book_id: int, db: Session = Depends(get_db)):
     
 
 @book_router.delete("/delete_book/{book_id}", response_model=schemas.delete_book)
-def delete_book(book_id: int, db: Session = Depends(get_db)):
+def delete_book(book_password: str, book_id: int, db: Session = Depends(get_db)):
     book = db.query(models.Book).filter(models.Book.id == book_id).first()
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
-    
+
+
     db.delete(book)
     db.commit()
     
@@ -190,12 +192,13 @@ def update_book(
     page_counts: int = Form(...),
     price: int = Form(...),
     title: str = Form(...),
-    book_password: str = Form(...),
     db: Session = Depends(get_db)
 ):
     book = db.query(models.Book).filter(models.Book.id == book_id).first()
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
+
+
 
     if db.query(models.Book).filter(models.Book.book_password != book_password).first():
         raise HTTPException(status_code=409, detail="Book password isn't correct")
