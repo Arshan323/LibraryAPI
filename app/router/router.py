@@ -1,4 +1,5 @@
-from fastapi import APIRouter,Depends, HTTPException, UploadFile,status,Path,File,Form
+from fastapi import APIRouter,Query,Depends, Form, HTTPException, status,Path,Body,File, UploadFile
+from streamlit import user
 from models import models
 from schemas import schemas
 from sqlalchemy.orm import Session
@@ -53,11 +54,15 @@ def user_register(user_data: schemas.BaseUser, db: Session = Depends(get_db)):
     path="/update/{user_id}",
     response_model=schemas.Update_Response,
     )
-def update_user(user_data:schemas.BaseUser,db:Session=Depends(get_db),user_id:int=Path(ge=1)):
+def update_user(user_data:schemas.Update,db:Session=Depends(get_db),user_id:int=Path(ge=1)):
     try:
         db_user = db.query(models.User).filter(models.User.id==user_id).first()
         if not db_user:
             raise HTTPException(status_code=404,detail="No user with id")
+        hashed_password = bcrypt.checkpw(user_data.previous_password.encode(), db_user.password)
+        if not hashed_password:
+            raise HTTPException(status_code=400, detail="Previous password is incorrect")
+        
         
         db_user.username = user_data.username
         db_user.email = user_data.email
@@ -72,15 +77,20 @@ def update_user(user_data:schemas.BaseUser,db:Session=Depends(get_db),user_id:in
         
 
 @user_router.delete(
-    path="/deleted/{user_id}",
+    path="/deleted/{user_id}/",
     response_model=schemas.delete
 )
-def delete(user_id:int=Path(ge=1),db:Session=Depends(get_db)):
+def delete(previous_password:str=Body(),user_id:int=Path(ge=1),db:Session=Depends(get_db)):
     try:
         db_user = db.query(models.User).filter(models.User.id==user_id).first()
 
         if not db_user:
             raise HTTPException(status_code=404,detail="No user with id")
+        hashed_password = bcrypt.checkpw(previous_password.encode(), db_user.password)
+        if not hashed_password:
+            raise HTTPException(status_code=400, detail="Previous password is incorrect")
+        
+        
         db.delete(db_user)
         db.commit()
         return {"message":"user deleted","user_id":db_user.id}
@@ -127,20 +137,24 @@ def search(by_with: str, user: str, db: Session = Depends(get_db)):
 
 @book_router.post("/upload", response_model=schemas.upload_book)
 def upload_book(
-    author:str = Form(...),
+    user_password: str = Query(...),
+    author: str = Form(...),
     genre: str = Form(...),
     language: str = Form(...),
     page_counts: int = Form(...),
-    price:int=Form(),
+    price: int = Form(...),
     title: str = Form(...),
     pdf: UploadFile = File(...),
     user_id: int = Form(...),
-    db:Session=Depends(get_db)
+    db: Session = Depends(get_db)
 ):
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-   
+
+    if not bcrypt.checkpw(user_password.encode(), user.password):
+        raise HTTPException(status_code=400, detail="Incorrect password for book upload")
+
     pdf_url = upload_file(pdf, f"test/{title}.pdf")
 
     new_book = models.Book(
@@ -158,7 +172,12 @@ def upload_book(
     db.commit()
     db.refresh(new_book)
 
-    return {"message": "file created", "pdf_url": pdf_url,"book_id": new_book.id,"book_password": new_book.book_password}
+    return {
+        "message": "file created",
+        "pdf_url": pdf_url,
+        "book_id": new_book.id
+    }
+
 
 @book_router.get("/get_book/{book_id}", response_model=schemas.get_book)
 def get_book(book_id: int, db: Session = Depends(get_db)):
@@ -173,35 +192,44 @@ def get_book(book_id: int, db: Session = Depends(get_db)):
     
 
 @book_router.delete("/delete_book/{book_id}", response_model=schemas.delete_book)
-def delete_book(book_password: str, book_id: int, db: Session = Depends(get_db)):
+def delete_book(user_id:int,password: str, book_id: int, db: Session = Depends(get_db)):
     book = db.query(models.Book).filter(models.Book.id == book_id).first()
+    user = db.query(models.User).filter(models.User.id == user_id).first()
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
 
+    hashed_password = bcrypt.checkpw(password.encode(), user.password)
+    if not hashed_password:
+        raise HTTPException(status_code=400, detail="Incorrect password for book deletion")
 
     db.delete(book)
     db.commit()
     
     return {"message": "Book deleted successfully", "book_id": book_id}
-@book_router.patch("/update_book/{book_id}/", response_model=None)
+@book_router.patch("/update_book/{book_id}/", response_model=schemas.update_book)
 def update_book(
-    book_id: int,
+    user_password: str = Query(...),
     author: str = Form(...),
     genre: str = Form(...),
     language: str = Form(...),
     page_counts: int = Form(...),
     price: int = Form(...),
     title: str = Form(...),
+    pdf: UploadFile = File(...),
+    user_id: int = Form(...),
+    book_id: int = Path(ge=1),
     db: Session = Depends(get_db)
 ):
     book = db.query(models.Book).filter(models.Book.id == book_id).first()
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
 
+    hashed_password = bcrypt.checkpw(user_password.encode(), user.password)
+    if not hashed_password:
+        raise HTTPException(status_code=400, detail="Incorrect password")
 
-
-    if db.query(models.Book).filter(models.Book.book_password != book_password).first():
-        raise HTTPException(status_code=409, detail="Book password isn't correct")
     book.name = title
     book.author = author
     book.genre = genre
@@ -221,4 +249,5 @@ def get_all_books(db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="No books found")
     
     return {"message": "Books retrieved successfully", "books": books}
+
 

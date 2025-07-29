@@ -1,5 +1,6 @@
 
 
+from fastapi import Form,File, UploadFile
 from pydantic import BaseModel, EmailStr
 from datetime import datetime
 from typing import Optional
@@ -20,6 +21,12 @@ class UserResponse(BaseModel):
 
 # update_user
 
+class Update(BaseModel):
+    username: str
+    email: EmailStr
+    password: str
+    previous_password: str
+    
 class Update_Response(BaseModel):
     id: int
     username: str
@@ -47,11 +54,11 @@ class search(BaseModel):
     created_at: datetime
     
 # upload_book
+
 class upload_book(BaseModel):
     message:str
     pdf_url:str
     book_id:int
-    book_password:str
 
 # delete book
 class delete_book(BaseModel):
@@ -68,6 +75,10 @@ class get_book(BaseModel):
     pdf_url: str
 
 
+
+
+# get_all_books
+
 class BookInfo(BaseModel):
     id: int
     name: str
@@ -81,7 +92,7 @@ class BookInfo(BaseModel):
     class Config:
         from_attributes = True
 
-# get_all_books
+
 class get_all_books(BaseModel):
     message: str
     books: list[BookInfo]
