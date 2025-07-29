@@ -39,6 +39,9 @@ class Update_Response(BaseModel):
 
 
 # delete
+class delete_user(BaseModel):
+    password: str
+
 class delete(BaseModel):
     message:str
     user_id:int
@@ -61,6 +64,8 @@ class upload_book(BaseModel):
     book_id:int
 
 # delete book
+
+
 class delete_book(BaseModel):
     message: str
     book_id: int

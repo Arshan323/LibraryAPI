@@ -80,13 +80,13 @@ def update_user(user_data:schemas.Update,db:Session=Depends(get_db),user_id:int=
     path="/deleted/{user_id}/",
     response_model=schemas.delete
 )
-def delete(previous_password:str=Body(),user_id:int=Path(ge=1),db:Session=Depends(get_db)):
+def delete(user:schemas.delete_user,user_id:int=Path(ge=1),db:Session=Depends(get_db)):
     try:
         db_user = db.query(models.User).filter(models.User.id==user_id).first()
 
         if not db_user:
             raise HTTPException(status_code=404,detail="No user with id")
-        hashed_password = bcrypt.checkpw(previous_password.encode(), db_user.password)
+        hashed_password = bcrypt.checkpw(user.previous_password.encode(), db_user.password)
         if not hashed_password:
             raise HTTPException(status_code=400, detail="Previous password is incorrect")
         
@@ -137,7 +137,7 @@ def search(by_with: str, user: str, db: Session = Depends(get_db)):
 
 @book_router.post("/upload", response_model=schemas.upload_book)
 def upload_book(
-    user_password: str = Query(...),
+    user_password: str = Body(),
     author: str = Form(...),
     genre: str = Form(...),
     language: str = Form(...),
@@ -192,13 +192,13 @@ def get_book(book_id: int, db: Session = Depends(get_db)):
     
 
 @book_router.delete("/delete_book/{book_id}", response_model=schemas.delete_book)
-def delete_book(user_id:int,password: str, book_id: int, db: Session = Depends(get_db)):
+def delete_book(book:schemas.delete_book, user_id:int, book_id: int, db: Session = Depends(get_db)):
     book = db.query(models.Book).filter(models.Book.id == book_id).first()
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
 
-    hashed_password = bcrypt.checkpw(password.encode(), user.password)
+    hashed_password = bcrypt.checkpw(book.password.encode(), user.password)
     if not hashed_password:
         raise HTTPException(status_code=400, detail="Incorrect password for book deletion")
 
@@ -208,7 +208,7 @@ def delete_book(user_id:int,password: str, book_id: int, db: Session = Depends(g
     return {"message": "Book deleted successfully", "book_id": book_id}
 @book_router.patch("/update_book/{book_id}/", response_model=schemas.update_book)
 def update_book(
-    user_password: str = Query(...),
+    user_password: str = Body(...),
     author: str = Form(...),
     genre: str = Form(...),
     language: str = Form(...),
