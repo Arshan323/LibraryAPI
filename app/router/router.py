@@ -13,7 +13,7 @@ router = APIRouter(
 )
 
 user_router = APIRouter(
-    prefix="/get_user"
+    prefix="/user"
 )
 
 book_router = APIRouter(
