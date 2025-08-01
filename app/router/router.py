@@ -136,6 +136,7 @@ def search(by_with: str, user: str, db: Session = Depends(get_db)):
 @book_router.post("/upload", response_model=schemas.upload_book)
 def upload_book(
     book_id: int,
+    user_id: int,
     title: str = Form(...),  
     author: str | None = Form(None),
     genre: str | None = Form(None),  
