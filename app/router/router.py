@@ -7,6 +7,7 @@ from db import get_db
 from sqlalchemy.exc import SQLAlchemyError
 import bcrypt
 from middleware.bucket import upload_file
+from middleware.auth_service import create_access_token
 
 router = APIRouter(
     prefix="/auth"
@@ -29,7 +30,7 @@ def user_register(user_data: schemas.BaseUser, db: Session = Depends(get_db)):
 
         new_user = models.User(
             username=user_data.username,
-            email=user_data.email,
+            email=user_data.email
         )
         hash_password = bcrypt.hashpw(password=user_data.password.encode(),salt=bcrypt.gensalt())
         new_user.password=hash_password
@@ -47,7 +48,10 @@ def user_register(user_data: schemas.BaseUser, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500,detail="server error")
     
 
-
+@router.post("/login")
+def login():
+    token = create_access_token(user_id=1, role="admin")
+    return {"access_token": token}
 
 
 @user_router.patch(
@@ -59,9 +63,6 @@ def update_user(user_data:schemas.Update,db:Session=Depends(get_db),user_id:int=
         db_user = db.query(models.User).filter(models.User.id==user_id).first()
         if not db_user:
             raise HTTPException(status_code=404,detail="No user with id")
-        hashed_password = bcrypt.checkpw(user_data.previous_password.encode(), db_user.password)
-        if not hashed_password:
-            raise HTTPException(status_code=400, detail="Previous password is incorrect")
         
         
         db_user.username = user_data.username
@@ -80,16 +81,13 @@ def update_user(user_data:schemas.Update,db:Session=Depends(get_db),user_id:int=
     path="/deleted/{user_id}/",
     response_model=schemas.delete
 )
-def delete(user:schemas.delete_user,user_id:int=Path(ge=1),db:Session=Depends(get_db)):
+def delete(user_id:int=Path(ge=1),db:Session=Depends(get_db)):
     try:
         db_user = db.query(models.User).filter(models.User.id==user_id).first()
 
         if not db_user:
             raise HTTPException(status_code=404,detail="No user with id")
-        hashed_password = bcrypt.checkpw(user.previous_password.encode(), db_user.password)
-        if not hashed_password:
-            raise HTTPException(status_code=400, detail="Previous password is incorrect")
-        
+
         
         db.delete(db_user)
         db.commit()
@@ -137,35 +135,37 @@ def search(by_with: str, user: str, db: Session = Depends(get_db)):
 
 @book_router.post("/upload", response_model=schemas.upload_book)
 def upload_book(
-    user_password: str = Body(),
-    author: str = Form(...),
-    genre: str = Form(...),
-    language: str = Form(...),
-    page_counts: int = Form(...),
-    price: int = Form(...),
-    title: str = Form(...),
-    pdf: UploadFile = File(...),
-    user_id: int = Form(...),
+    book_id: int,
+    title: str = Form(...),  
+    author: str | None = Form(None),
+    genre: str | None = Form(None),  
+    publisher: str | None = Form(None), 
+    language: str = Form(...),  
+    page_counts: str = Form(...), 
+    book_image: str | None = Form(None),  
+    price: str | None = Form(None), 
+    pdf: str | None = Form(None), 
+    description: str | None = Form(None), 
     db: Session = Depends(get_db)
 ):
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    if not bcrypt.checkpw(user_password.encode(), user.password):
-        raise HTTPException(status_code=400, detail="Incorrect password for book upload")
 
     pdf_url = upload_file(pdf, f"test/{title}.pdf")
 
     new_book = models.Book(
-        name=title,
-        link_download=pdf_url,
-        author=author,
-        genre=genre,
-        language=language,
-        page_counts=page_counts,
-        price=price,
-        user_id=user_id
+        name = title,
+        author = author,
+        genre = genre,
+        language = language,
+        page_counts = page_counts,
+        price = price,
+        publisher = publisher,
+        description = description,
+        link_download = pdf,
+        book_image = book_image
     )
 
     db.add(new_book)
@@ -192,15 +192,11 @@ def get_book(book_id: int, db: Session = Depends(get_db)):
     
 
 @book_router.delete("/delete_book/{book_id}", response_model=schemas.delete_book)
-def delete_book(book:schemas.delete_book, user_id:int, book_id: int, db: Session = Depends(get_db)):
+def delete_book(book:schemas.delete_book, book_id: int, db: Session = Depends(get_db)):
     book = db.query(models.Book).filter(models.Book.id == book_id).first()
-    user = db.query(models.User).filter(models.User.id == user_id).first()
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
 
-    hashed_password = bcrypt.checkpw(book.password.encode(), user.password)
-    if not hashed_password:
-        raise HTTPException(status_code=400, detail="Incorrect password for book deletion")
 
     db.delete(book)
     db.commit()
@@ -208,27 +204,25 @@ def delete_book(book:schemas.delete_book, user_id:int, book_id: int, db: Session
     return {"message": "Book deleted successfully", "book_id": book_id}
 @book_router.patch("/update_book/{book_id}/", response_model=schemas.update_book)
 def update_book(
-    user_password: str = Body(...),
-    author: str = Form(...),
-    genre: str = Form(...),
-    language: str = Form(...),
-    page_counts: int = Form(...),
-    price: int = Form(...),
-    title: str = Form(...),
-    pdf: UploadFile = File(...),
-    user_id: int = Form(...),
-    book_id: int = Path(ge=1),
+    book_id: int,
+    title: str = Form(...),  
+    author: str | None = Form(None),
+    genre: str | None = Form(None),  
+    publisher: str | None = Form(None), 
+    language: str = Form(...),  
+    page_counts: str = Form(...), 
+    book_image: str | None = Form(None),  
+    price: str | None = Form(None), 
+    pdf: str | None = Form(None), 
+    description: str | None = Form(None), 
     db: Session = Depends(get_db)
 ):
     book = db.query(models.Book).filter(models.Book.id == book_id).first()
-    user = db.query(models.User).filter(models.User.id == user_id).first()
     
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
 
-    hashed_password = bcrypt.checkpw(user_password.encode(), user.password)
-    if not hashed_password:
-        raise HTTPException(status_code=400, detail="Incorrect password")
+
 
     book.name = title
     book.author = author
@@ -236,11 +230,12 @@ def update_book(
     book.language = language
     book.page_counts = page_counts
     book.price = price
+    book.publisher = publisher
+    book.description = description
+    book.link_download = pdf
+    book.book_image = book_image
 
     db.commit()
-    db.refresh(book)
-
-    return {"message":"book updated successfully"}
 
 @book_router.get("/get_all_books", response_model=schemas.get_all_books)
 def get_all_books(db: Session = Depends(get_db)):
@@ -249,5 +244,4 @@ def get_all_books(db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="No books found")
     
     return {"message": "Books retrieved successfully", "books": books}
-
 

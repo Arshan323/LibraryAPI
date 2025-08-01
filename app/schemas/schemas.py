@@ -1,6 +1,5 @@
 
 
-from fastapi import Form,File, UploadFile
 from pydantic import BaseModel, EmailStr
 from datetime import datetime
 from typing import Optional
@@ -25,7 +24,6 @@ class Update(BaseModel):
     username: str
     email: EmailStr
     password: str
-    previous_password: str
     
 class Update_Response(BaseModel):
     id: int
@@ -39,8 +37,6 @@ class Update_Response(BaseModel):
 
 
 # delete
-class delete_user(BaseModel):
-    password: str
 
 class delete(BaseModel):
     message:str
