@@ -135,18 +135,19 @@ def search(by_with: str, user: str, db: Session = Depends(get_db)):
 
 @book_router.post("/upload", response_model=schemas.upload_book)
 def upload_book(
-    book_id: int,
     user_id: int,
     title: str = Form(...),  
+    language: str = Form(...),
+    page_counts: str = Form(...),
+    
     author: str | None = Form(None),
     genre: str | None = Form(None),  
     publisher: str | None = Form(None), 
-    language: str = Form(...),  
-    page_counts: str = Form(...), 
     book_image: str | None = Form(None),  
     price: str | None = Form(None), 
     pdf: str | None = Form(None), 
-    description: str | None = Form(None), 
+    description: str | None = Form(None),
+     
     db: Session = Depends(get_db)
 ):
     user = db.query(models.User).filter(models.User.id == user_id).first()
@@ -206,12 +207,12 @@ def delete_book(book:schemas.delete_book, book_id: int, db: Session = Depends(ge
 @book_router.patch("/update_book/{book_id}/", response_model=schemas.update_book)
 def update_book(
     book_id: int,
-    title: str = Form(...),  
+    title: str | None = Form(None),  
     author: str | None = Form(None),
     genre: str | None = Form(None),  
     publisher: str | None = Form(None), 
-    language: str = Form(...),  
-    page_counts: str = Form(...), 
+    language: str | None = Form(None),  
+    page_counts: str | None = Form(None), 
     book_image: str | None = Form(None),  
     price: str | None = Form(None), 
     pdf: str | None = Form(None), 
