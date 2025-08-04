@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, status, Request
+from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer
 import jwt
 from datetime import datetime, timedelta
@@ -10,7 +10,7 @@ security = HTTPBearer()
 
 SECRET_KEY = os.getenv("Secret_key")
 ALGORITHM = os.getenv("Algorithm")
-
+Time = 1
 # -------------------------------
 # Create JWT Token
 # -------------------------------
@@ -18,7 +18,7 @@ def create_access_token(user_id: int, role: str):
     payload = {
         "user_id": user_id,
         "role": role,
-        "exp": datetime.utcnow() + timedelta(hours=1)
+        "exp": datetime.utcnow() + timedelta(hours=Time)
     }
     token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
     return token

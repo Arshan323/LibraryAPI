@@ -21,8 +21,13 @@ book_router = APIRouter(
     prefix="/book"
 )
 
-@auth_router.post("/signup", response_model=schemas.UserResponse,status_code=status.HTTP_201_CREATED)
-def user_register(user_data: schemas.BaseUser, db: Session = Depends(get_db)):
+def check_role(role: str = Path(...), password_admin: str | None = Query(None)):
+    if role.lower() == "admin" and password_admin != "1010":
+        raise HTTPException(status_code=405, detail="Invalid admin password")
+    return role
+
+@auth_router.post("/signup/{role}", response_model=schemas.UserResponse,status_code=status.HTTP_201_CREATED)
+def user_register(user_data: schemas.BaseUser,db: Session = Depends(get_db)):
     try:
         if db.query(models.User).filter(models.User.email==user_data.email).first():
             raise HTTPException(status_code=409,detail="email is already exist")
@@ -50,7 +55,7 @@ def user_register(user_data: schemas.BaseUser, db: Session = Depends(get_db)):
     
 
 @auth_router.post("/login/{user_id}&{role}")
-def login(user:schemas.login,user_id,role):
+def login(user:schemas.login,user_id:int,role: str=Depends(check_role)):
     token = create_access_token(user_id=user_id, role=role,user_name=user.username)
     return {"access_token": token}
    
@@ -146,7 +151,7 @@ def upload_book(
     publisher: str | None = Form(None), 
     book_image: str | None = Form(None),  
     price: str | None = Form(None), 
-    pdf: str | None = Form(None), 
+    pdf: UploadFile = File(...), 
     description: str | None = Form(None),
      
     db: Session = Depends(get_db)
@@ -167,7 +172,7 @@ def upload_book(
         price = price,
         publisher = publisher,
         description = description,
-        link_download = pdf,
+        link_download = pdf_url,
         book_image = book_image
     )
 
@@ -204,7 +209,7 @@ def delete_book(book:schemas.delete_book, book_id: int, db: Session = Depends(ge
     db.delete(book)
     db.commit()
     
-    return {"message": "Book deleted successfully", "book_id": book_id}
+    return {"message": "Book deleted successfully"}
 @book_router.patch("/update_book/{book_id}/", response_model=schemas.update_book)
 def update_book(
     book_id: int,
@@ -239,6 +244,8 @@ def update_book(
     book.book_image = book_image
 
     db.commit()
+
+    return {"message": "Book updated successfully", "book_id": book_id}
 
 @book_router.get("/get_all_books", response_model=schemas.get_all_books)
 def get_all_books(db: Session = Depends(get_db)):

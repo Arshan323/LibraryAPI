@@ -8,7 +8,6 @@ class BaseUser(BaseModel):
     username: str
     email: EmailStr
     password: str
-    role: str
 
 class UserResponse(BaseModel):
     id: int
