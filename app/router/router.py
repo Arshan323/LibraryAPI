@@ -1,4 +1,4 @@
-from fastapi import APIRouter,Query,Depends, Form, HTTPException, status,Path,Body,File, UploadFile
+from fastapi import APIRouter,Query,Depends, Form, HTTPException, status,Path,File, UploadFile
 import bcrypt
 from models import models
 from schemas import schemas
@@ -27,7 +27,7 @@ def check_role(role: str = Path(...), password_admin: str | None = Query(None)):
     return role
 
 @auth_router.post("/signup/{role}", response_model=schemas.UserResponse,status_code=status.HTTP_201_CREATED)
-def user_register(user_data: schemas.BaseUser,db: Session = Depends(get_db)):
+def signup(user_data: schemas.BaseUser,db: Session = Depends(get_db)):
     try:
         if db.query(models.User).filter(models.User.email==user_data.email).first():
             raise HTTPException(status_code=409,detail="email is already exist")
@@ -69,6 +69,8 @@ def update_user(user_data:schemas.Update,db:Session=Depends(get_db),user_id:int=
         db_user = db.query(models.User).filter(models.User.id==user_id).first()
         if not db_user:
             raise HTTPException(status_code=404,detail="No user with id")
+        
+        
         
         
         db_user.username = user_data.username
