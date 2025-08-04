@@ -9,7 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from middleware.bucket import upload_file
 from middleware.auth_service import create_access_token
 
-router = APIRouter(
+auth_router = APIRouter(
     prefix="/auth"
 )
 
@@ -21,7 +21,7 @@ book_router = APIRouter(
     prefix="/book"
 )
 
-@router.post("/signup", response_model=schemas.UserResponse,status_code=status.HTTP_201_CREATED)
+@auth_router.post("/signup", response_model=schemas.UserResponse,status_code=status.HTTP_201_CREATED)
 def user_register(user_data: schemas.BaseUser, db: Session = Depends(get_db)):
     try:
         if db.query(models.User).filter(models.User.email==user_data.email).first():
@@ -30,7 +30,8 @@ def user_register(user_data: schemas.BaseUser, db: Session = Depends(get_db)):
 
         new_user = models.User(
             username=user_data.username,
-            email=user_data.email
+            email=user_data.email,
+            role=user_data.role
         )
         hash_password = bcrypt.hashpw(password=user_data.password.encode(),salt=bcrypt.gensalt())
         new_user.password=hash_password
@@ -48,11 +49,11 @@ def user_register(user_data: schemas.BaseUser, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500,detail="server error")
     
 
-@router.post("/login")
-def login():
-    token = create_access_token(user_id=1, role="admin")
+@auth_router.post("/login/{user_id}&{role}")
+def login(user:schemas.login,user_id,role):
+    token = create_access_token(user_id=user_id, role=role,user_name=user.username)
     return {"access_token": token}
-
+   
 
 @user_router.patch(
     path="/update/{user_id}",

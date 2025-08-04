@@ -8,6 +8,7 @@ class BaseUser(BaseModel):
     username: str
     email: EmailStr
     password: str
+    role: str
 
 class UserResponse(BaseModel):
     id: int
@@ -17,6 +18,12 @@ class UserResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+# login
+
+class login(BaseModel):
+    username: str
+    password: str
 
 # update_user
 

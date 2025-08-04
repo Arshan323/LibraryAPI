@@ -2,12 +2,14 @@ from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer
 import jwt
 from datetime import datetime, timedelta
-
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 security = HTTPBearer()
 
-SECRET_KEY = "your_secret_key"
-ALGORITHM = "HS256"
+SECRET_KEY = os.getenv("Secret_key")
+ALGORITHM = os.getenv("Algorithm")
 
 # -------------------------------
 # Create JWT Token
@@ -33,21 +35,15 @@ def get_current_user(token: str = Depends(security)):
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
-# -------------------------------
-# Routes
-# -------------------------------
-# # @app.post("/login")
-# def login():
-#     # Dummy login
-#     token = create_access_token(user_id=1, role="admin")
-#     return {"access_token": token}
+
 
 # @app.get("/protected")
 # def protected_route(current_user: dict = Depends(get_current_user)):
 #     return {
 #         "message": "Access granted",
 #         "user_id": current_user["user_id"],
-#         "role": current_user["role"]
+#         "role": current_user["role"],
+#         "username": current_user.get("username")
 #     }
 
 

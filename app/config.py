@@ -9,8 +9,12 @@ app = FastAPI(
 # ایجاد جداول
 Base.metadata.create_all(bind=engine)
 
-app.include_router(router=router.router,tags=["auth"])
+app.include_router(router=router.auth_router,tags=["auth"])
 
 app.include_router(router=router.user_router,tags=["user"])
 
 app.include_router(router=router.book_router,tags=["book"])
+
+
+
+
