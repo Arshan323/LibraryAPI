@@ -14,10 +14,11 @@ Time = 1
 # -------------------------------
 # Create JWT Token
 # -------------------------------
-def create_access_token(user_id: int, role: str):
+def create_access_token(user_id: int, role: str, username: str):
     payload = {
         "user_id": user_id,
         "role": role,
+        "username": username,
         "exp": datetime.utcnow() + timedelta(hours=Time)
     }
     token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
@@ -29,7 +30,7 @@ def create_access_token(user_id: int, role: str):
 def get_current_user(token: str = Depends(security)):
     try:
         payload = jwt.decode(token.credentials, SECRET_KEY, algorithms=[ALGORITHM])
-        return {"user_id": payload.get("user_id"), "role": payload.get("role")}
+        return {"user_id": payload.get("user_id"), "role": payload.get("role"),"username": payload.get("username")}
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expired")
     except jwt.InvalidTokenError:

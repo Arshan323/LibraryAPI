@@ -7,7 +7,7 @@ from db import get_db
 from sqlalchemy.exc import SQLAlchemyError
 
 from middleware.bucket import upload_file
-from middleware.auth_service import create_access_token
+from middleware.auth_service import create_access_token,get_current_user,security
 
 auth_router = APIRouter(
     prefix="/auth"
@@ -26,8 +26,8 @@ def check_role(role: str = Path(...), password_admin: str | None = Query(None)):
         raise HTTPException(status_code=405, detail="Invalid admin password")
     return role
 
-@auth_router.post("/signup/{role}", response_model=schemas.UserResponse,status_code=status.HTTP_201_CREATED)
-def signup(user_data: schemas.BaseUser,db: Session = Depends(get_db)):
+@auth_router.post("/signin", response_model=schemas.UserResponse,status_code=status.HTTP_201_CREATED)
+def signin(user_data: schemas.BaseUser,db: Session = Depends(get_db)):
     try:
         if db.query(models.User).filter(models.User.email==user_data.email).first():
             raise HTTPException(status_code=409,detail="email is already exist")
@@ -55,8 +55,14 @@ def signup(user_data: schemas.BaseUser,db: Session = Depends(get_db)):
     
 
 @auth_router.post("/login/{user_id}&{role}")
-def login(user:schemas.login,user_id:int,role: str=Depends(check_role)):
-    token = create_access_token(user_id=user_id, role=role,user_name=user.username)
+def login(user:schemas.login,user_id:int,role: str=Depends(check_role),db:Session=Depends(get_db)):
+    user_name = db.query(models.User).filter(models.User.id==user_id).first()
+
+    if not user_name:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not bcrypt.checkpw(user.password.encode('utf-8'), user_name.password):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    token = create_access_token(user_id=user_id, role=role,username=user.username)
     return {"access_token": token}
    
 
@@ -64,15 +70,15 @@ def login(user:schemas.login,user_id:int,role: str=Depends(check_role)):
     path="/update/{user_id}",
     response_model=schemas.Update_Response,
     )
-def update_user(user_data:schemas.Update,db:Session=Depends(get_db),user_id:int=Path(ge=1)):
+def update_user(user_data:schemas.Update,token:str = Depends(security),db:Session=Depends(get_db)):
     try:
-        db_user = db.query(models.User).filter(models.User.id==user_id).first()
-        if not db_user:
-            raise HTTPException(status_code=404,detail="No user with id")
-        
-        
-        
-        
+        token = get_current_user(token=token)
+        db_user = db.query(models.User).filter(models.User.id==token["user_id"]).first()
+
+
+        if token["role"] == "admin":
+            raise HTTPException(status_code=403, detail="Not authorized to update this user")
+
         db_user.username = user_data.username
         db_user.email = user_data.email
     
@@ -89,12 +95,13 @@ def update_user(user_data:schemas.Update,db:Session=Depends(get_db),user_id:int=
     path="/deleted/{user_id}/",
     response_model=schemas.delete
 )
-def delete(user_id:int=Path(ge=1),db:Session=Depends(get_db)):
+def delete(token: str = Depends(security),db:Session=Depends(get_db)):
     try:
-        db_user = db.query(models.User).filter(models.User.id==user_id).first()
+        token = get_current_user(token=token)
+        db_user = db.query(models.User).filter(models.User.id==token["user_id"]).first()
 
-        if not db_user:
-            raise HTTPException(status_code=404,detail="No user with id")
+        if token["role"] != "admin":
+            raise HTTPException(status_code=403, detail="Not authorized to update this user")
 
         
         db.delete(db_user)
@@ -107,20 +114,9 @@ def delete(user_id:int=Path(ge=1),db:Session=Depends(get_db)):
 @user_router.get("/search/",response_model=schemas.search)
 def search(by_with: str, user: str, db: Session = Depends(get_db)):
     try:
-        if by_with.find("id") != -1:
-            try:
-                user_id = int(user)
-            except Exception:
-                raise HTTPException(status_code=400, detail="TypeError: id must be an integer")
-
-            
-            db_user = db.query(models.User).filter(models.User.id == user_id).first()
-            if not db_user:
-                raise HTTPException(status_code=404, detail="User not found")
-            return db_user
 
 
-        elif by_with.find("email") != -1:
+        if by_with.find("email") != -1:
             
             db_user = db.query(models.User).filter(models.User.email == user).first()
             if not db_user:
@@ -143,78 +139,93 @@ def search(by_with: str, user: str, db: Session = Depends(get_db)):
 
 @book_router.post("/upload", response_model=schemas.upload_book)
 def upload_book(
-    user_id: int,
+    
     title: str = Form(...),  
     language: str = Form(...),
     page_counts: str = Form(...),
+    pdf: UploadFile = File(...), 
     
     author: str | None = Form(None),
     genre: str | None = Form(None),  
     publisher: str | None = Form(None), 
     book_image: str | None = Form(None),  
     price: str | None = Form(None), 
-    pdf: UploadFile = File(...), 
+
     description: str | None = Form(None),
      
+    token: str = Depends(security),
     db: Session = Depends(get_db)
 ):
-    user = db.query(models.User).filter(models.User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    try:
+        token = get_current_user(token=token)
+
+        if token["role"] != "admin":
+            raise HTTPException(status_code=403, detail="Not authorized to update this user")
 
 
-    pdf_url = upload_file(pdf, f"test/{title}.pdf")
+        pdf_url = upload_file(pdf, f"test/{title}.pdf")
 
-    new_book = models.Book(
-        name = title,
-        author = author,
-        genre = genre,
-        language = language,
-        page_counts = page_counts,
-        price = price,
-        publisher = publisher,
-        description = description,
-        link_download = pdf_url,
-        book_image = book_image
-    )
+        new_book = models.Book(
+            name = title,
+            author = author,
+            genre = genre,
+            language = language,
+            page_counts = page_counts,
+            price = price,
+            publisher = publisher,
+            description = description,
+            link_download = pdf_url,
+            book_image = book_image
+        )
 
-    db.add(new_book)
-    db.commit()
-    db.refresh(new_book)
+        db.add(new_book)
+        db.commit()
+        db.refresh(new_book)
 
-    return {
-        "message": "file created",
-        "pdf_url": pdf_url,
-        "book_id": new_book.id
-    }
+        return {
+            "message": "file created",
+            "pdf_url": pdf_url,
+            "book_id": new_book.id
+        }
+    except SQLAlchemyError:
+        raise HTTPException(status_code=500, detail="Internal server error")
 
+@book_router.get("/get_your_book", response_model=schemas.get_book)
+def get_your_book(token: str = Depends(security), db: Session = Depends(get_db)):
+    try:
+        token = get_current_user(token=token)
+        if token["role"] != "admin":
+            raise HTTPException(status_code=403, detail="Not authorized to update this user")
 
-@book_router.get("/get_book/{book_id}", response_model=schemas.get_book)
-def get_book(book_id: int, db: Session = Depends(get_db)):
-    book = db.query(models.Book).filter(models.Book.id == book_id).first()
-    if not book:
-        raise HTTPException(status_code=404, detail="Book not found")
+        book = db.query(models.Book).filter(models.Book.user_id == token["user_id"]).all()
+        if not book:
+            raise HTTPException(status_code=404, detail="Book not found")
     
-    return {
-        "message": "Book retrieved successfully",
-        "pdf_url": book.link_download
-    }
+        return {
+            "message": "Book retrieved successfully",
+            "pdf": book
+        }
+    except SQLAlchemyError:
+        raise HTTPException(status_code=500, detail="Internal server error")
     
 
-@book_router.delete("/delete_book/{book_id}", response_model=schemas.delete_book)
-def delete_book(book:schemas.delete_book, book_id: int, db: Session = Depends(get_db)):
-    book = db.query(models.Book).filter(models.Book.id == book_id).first()
-    if not book:
-        raise HTTPException(status_code=404, detail="Book not found")
+@book_router.delete("/delete_book", response_model=schemas.delete_book)
+def delete_book(book:schemas.delete_book, token: str = Depends(security), db: Session = Depends(get_db)):
+    try:
+        token = get_current_user(token=token)
+        book = db.query(models.Book).filter(models.Book.user_id == token["user_id"]).first()
+        if not book:
+            raise HTTPException(status_code=404, detail="Book not found")
 
 
-    db.delete(book)
-    db.commit()
+        db.delete(book)
+        db.commit()
     
-    return {"message": "Book deleted successfully"}
-@book_router.patch("/update_book/{book_id}/", response_model=schemas.update_book)
+        return {"message": "Book deleted successfully"}
+    except SQLAlchemyError:
+        raise HTTPException(status_code=500, detail="Internal server error")
+@book_router.patch("/update_book", response_model=schemas.update_book)
 def update_book(
-    book_id: int,
     title: str | None = Form(None),  
     author: str | None = Form(None),
     genre: str | None = Form(None),  
@@ -223,37 +234,52 @@ def update_book(
     page_counts: str | None = Form(None), 
     book_image: str | None = Form(None),  
     price: str | None = Form(None), 
-    pdf: str | None = Form(None), 
+    pdf: str | None = File(None), 
     description: str | None = Form(None), 
+    token: str = Depends(security),
     db: Session = Depends(get_db)
 ):
-    book = db.query(models.Book).filter(models.Book.id == book_id).first()
-    
-    if not book:
-        raise HTTPException(status_code=404, detail="Book not found")
+    try:
+        token = get_current_user(token=token)
+        book = db.query(models.Book).filter(models.Book.user_id == token["user_id"]).first()
+
+        if not book:
+            raise HTTPException(status_code=404, detail="Book not found")
 
 
+        if title:
+            book.name = title
+        if author:
+            book.author = author
+        if genre:
+            book.genre = genre
+        if language:
+            book.language = language
+        if page_counts:
+            book.page_counts = page_counts
+        if price:
+            book.price = price
+        if publisher:
+            book.publisher = publisher
+        if description:
+            book.description = description
+        if pdf:
+            book.link_download = pdf
+        if book_image:
+            book.book_image = book_image
 
-    book.name = title
-    book.author = author
-    book.genre = genre
-    book.language = language
-    book.page_counts = page_counts
-    book.price = price
-    book.publisher = publisher
-    book.description = description
-    book.link_download = pdf
-    book.book_image = book_image
+        db.commit()
 
-    db.commit()
-
-    return {"message": "Book updated successfully", "book_id": book_id}
-
+        return {"message": "Book updated successfully"}
+    except SQLAlchemyError:
+        raise HTTPException(status_code=500, detail="Internal server error")
 @book_router.get("/get_all_books", response_model=schemas.get_all_books)
 def get_all_books(db: Session = Depends(get_db)):
-    books = db.query(models.Book).all()
-    if not books:
-        raise HTTPException(status_code=404, detail="No books found")
+    try:
+        books = db.query(models.Book).all()
+        if not books:
+            raise HTTPException(status_code=404, detail="No books found")
     
-    return {"message": "Books retrieved successfully", "books": books}
-
+        return {"message": "Books retrieved successfully", "books": books}
+    except SQLAlchemyError:
+        raise HTTPException(status_code=500, detail="Internal server error")

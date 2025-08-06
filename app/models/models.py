@@ -12,6 +12,7 @@ class User(Base):
     email = Column(String(100), unique=True, nullable=False, index=True)
     password = Column(LargeBinary(1500), nullable=False)
     phone_number = Column(String)
+    role = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
     update_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -32,7 +33,7 @@ class Book(Base):
     price = Column(Float,nullable=True)
     link_download = Column(String)
     description = Column(Text)
-    role = Column(String)
+
 
     created_at = Column(DateTime, default=datetime.utcnow)
     update_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

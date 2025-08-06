@@ -8,6 +8,7 @@ class BaseUser(BaseModel):
     username: str
     email: EmailStr
     password: str
+    role: str
 
 class UserResponse(BaseModel):
     id: int
@@ -32,7 +33,6 @@ class Update(BaseModel):
     password: str
     
 class Update_Response(BaseModel):
-    id: int
     username: str
     email: EmailStr
     password: str
@@ -63,28 +63,19 @@ class search(BaseModel):
 class upload_book(BaseModel):
     message:str
     pdf_url:str
-    book_id:int
+
 
 # delete book
 
 
 class delete_book(BaseModel):
     message: str
-    book_id: int
     
 # update_book
 class update_book(BaseModel):
     message: str
     
 # get_book
-class get_book(BaseModel):
-    message: str
-    pdf_url: str
-
-
-
-
-# get_all_books
 
 class BookInfo(BaseModel):
     id: int
@@ -98,6 +89,18 @@ class BookInfo(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class get_book(BaseModel):
+    message: str
+    books: list[BookInfo]
+    class Config:
+        from_attributes = True
+
+
+
+# get_all_books
+
 
 
 class get_all_books(BaseModel):
