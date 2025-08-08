@@ -93,7 +93,7 @@ class BookInfo(BaseModel):
 
 class get_book(BaseModel):
     message: str
-    books: list[BookInfo]
+    pdf: list[BookInfo]
     class Config:
         from_attributes = True
 

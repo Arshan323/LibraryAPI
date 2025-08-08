@@ -5,6 +5,8 @@ from schemas import schemas
 from sqlalchemy.orm import Session
 from db import get_db
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import and_
+
 
 from middleware.bucket import upload_file
 from middleware.auth_service import create_access_token,get_current_user,security
@@ -70,14 +72,15 @@ def login(user:schemas.login,user_id:int,role: str=Depends(check_role),db:Sessio
     path="/update/{user_id}",
     response_model=schemas.Update_Response,
     )
-def update_user(user_data:schemas.Update,token:str = Depends(security),db:Session=Depends(get_db)):
+def update_user(This_feature_is_only_for_the_admin_to_choose_which_user_to_edit:int,user_data:schemas.Update,token:str = Depends(security),db:Session=Depends(get_db)):
     try:
         token = get_current_user(token=token)
-        db_user = db.query(models.User).filter(models.User.id==token["user_id"]).first()
 
 
         if token["role"] == "admin":
-            raise HTTPException(status_code=403, detail="Not authorized to update this user")
+            db_user = db.query(models.User).filter(models.User.id==This_feature_is_only_for_the_admin_to_choose_which_user_to_edit).first()
+        else:
+            db_user = db.query(models.User).filter(models.User.id==token["user_id"]).first()
 
         db_user.username = user_data.username
         db_user.email = user_data.email
@@ -95,14 +98,14 @@ def update_user(user_data:schemas.Update,token:str = Depends(security),db:Sessio
     path="/deleted/{user_id}/",
     response_model=schemas.delete
 )
-def delete(token: str = Depends(security),db:Session=Depends(get_db)):
+def delete(This_feature_is_only_for_the_admin_to_choose_which_user_to_edit:int,token: str = Depends(security),db:Session=Depends(get_db)):
     try:
         token = get_current_user(token=token)
-        db_user = db.query(models.User).filter(models.User.id==token["user_id"]).first()
-
-        if token["role"] != "admin":
-            raise HTTPException(status_code=403, detail="Not authorized to update this user")
-
+ 
+        if token["role"] == "admin":
+            db_user = db.query(models.User).filter(models.User.id==This_feature_is_only_for_the_admin_to_choose_which_user_to_edit).first()
+        else:
+            db_user = db.query(models.User).filter(models.User.id==token["user_id"]).first()
         
         db.delete(db_user)
         db.commit()
@@ -142,14 +145,14 @@ def upload_book(
     
     title: str = Form(...),  
     language: str = Form(...),
-    page_counts: str = Form(...),
+    page_counts: int = Form(...),
     pdf: UploadFile = File(...), 
     
     author: str | None = Form(None),
     genre: str | None = Form(None),  
     publisher: str | None = Form(None), 
     book_image: str | None = Form(None),  
-    price: str | None = Form(None), 
+    price: int | None = Form(None), 
 
     description: str | None = Form(None),
      
@@ -159,8 +162,6 @@ def upload_book(
     try:
         token = get_current_user(token=token)
 
-        if token["role"] != "admin":
-            raise HTTPException(status_code=403, detail="Not authorized to update this user")
 
 
         pdf_url = upload_file(pdf, f"test/{title}.pdf")
@@ -175,7 +176,8 @@ def upload_book(
             publisher = publisher,
             description = description,
             link_download = pdf_url,
-            book_image = book_image
+            book_image = book_image,
+            user_id = token["user_id"]
         )
 
         db.add(new_book)
@@ -194,8 +196,6 @@ def upload_book(
 def get_your_book(token: str = Depends(security), db: Session = Depends(get_db)):
     try:
         token = get_current_user(token=token)
-        if token["role"] != "admin":
-            raise HTTPException(status_code=403, detail="Not authorized to update this user")
 
         book = db.query(models.Book).filter(models.Book.user_id == token["user_id"]).all()
         if not book:
@@ -210,14 +210,16 @@ def get_your_book(token: str = Depends(security), db: Session = Depends(get_db))
     
 
 @book_router.delete("/delete_book", response_model=schemas.delete_book)
-def delete_book(book:schemas.delete_book, token: str = Depends(security), db: Session = Depends(get_db)):
+def delete_book(book_id:int, token: str = Depends(security), db: Session = Depends(get_db)):
     try:
         token = get_current_user(token=token)
-        book = db.query(models.Book).filter(models.Book.user_id == token["user_id"]).first()
+        if token["role"] == "admin":
+            book = db.query(models.Book).filter(models.Book.id == book_id).first()
+        else:
+            book = db.query(models.Book).filter(and_(models.Book.id == book_id, models.Book.user_id == token["user_id"])).first()
+
         if not book:
             raise HTTPException(status_code=404, detail="Book not found")
-
-
         db.delete(book)
         db.commit()
     
@@ -226,6 +228,7 @@ def delete_book(book:schemas.delete_book, token: str = Depends(security), db: Se
         raise HTTPException(status_code=500, detail="Internal server error")
 @book_router.patch("/update_book", response_model=schemas.update_book)
 def update_book(
+    book_id:int,
     title: str | None = Form(None),  
     author: str | None = Form(None),
     genre: str | None = Form(None),  
@@ -234,18 +237,20 @@ def update_book(
     page_counts: str | None = Form(None), 
     book_image: str | None = Form(None),  
     price: str | None = Form(None), 
-    pdf: str | None = File(None), 
+    pdf: UploadFile | None = UploadFile(None), 
     description: str | None = Form(None), 
     token: str = Depends(security),
     db: Session = Depends(get_db)
 ):
     try:
         token = get_current_user(token=token)
-        book = db.query(models.Book).filter(models.Book.user_id == token["user_id"]).first()
+        if token["role"] == "admin":
+            book = db.query(models.Book).filter(models.Book.id == book_id).first()
+        else:
+            book = db.query(models.Book).filter(and_(models.Book.id == book_id, models.Book.user_id == token["user_id"])).first()
 
         if not book:
             raise HTTPException(status_code=404, detail="Book not found")
-
 
         if title:
             book.name = title
