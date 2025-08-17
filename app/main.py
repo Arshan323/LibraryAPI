@@ -5,7 +5,7 @@ import os
 load_dotenv()
 
 uvicorn_host = os.getenv("uvicorn_host",default="localhost")
-uvicorn_port = os.getenv("uvicorn_port")
+uvicorn_port = os.getenv("uvicorn_port",default="8000")
 env = os.getenv("env",default="dev")
 
 if __name__ == "__main__":
