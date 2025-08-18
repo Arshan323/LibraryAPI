@@ -56,15 +56,15 @@ def signin(user_data: schemas.BaseUser,db: Session = Depends(get_db)):
         raise HTTPException(status_code=500,detail="server error")
     
 
-@auth_router.post("/login/{user_id}&{role}")
-def login(user:schemas.login,user_id:int,role: str=Depends(check_role),db:Session=Depends(get_db)):
-    user_name = db.query(models.User).filter(models.User.id==user_id).first()
+@auth_router.post("/login")
+def login(user:schemas.login,db:Session=Depends(get_db)):
+    user_name = db.query(models.User).filter(models.User.email==user.email).first()
 
     if not user_name:
         raise HTTPException(status_code=404, detail="User not found")
     if not bcrypt.checkpw(user.password.encode('utf-8'), user_name.password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    token = create_access_token(user_id=user_id, role=role,username=user.username)
+    token = create_access_token(user_id=user_name.id, role=user_name.role,username=user_name.username)
     return {"access_token": token}
    
 
